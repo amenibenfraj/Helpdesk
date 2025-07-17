@@ -1,0 +1,612 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:get/get.dart';
+import 'package:helpdesk/src/Views/TicketDetails.dart';
+import 'package:helpdesk/src/controllers/sessionController.dart';
+import 'package:helpdesk/src/controllers/ticket_controller.dart';
+import 'package:helpdesk/src/helpers/utils.dart';
+import 'package:helpdesk/src/models/Ticket.dart';
+
+import '../controllers/technician_controller.dart';
+
+
+class Listticketbytechnicien extends StatelessWidget {
+  final TicketController controller = Get.find<TicketController>();
+  final TextEditingController searchController = TextEditingController();
+  final techController = Get.find<TechnicianController>();
+  final sessionController session = Get.find<sessionController>();
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+
+  @override
+  Widget build(BuildContext context) {
+    
+   
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: const MenuUser(Index: 2),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF4A6FE5),
+              Color(0xFF6F8FF2),
+              Color(0xFFB6C5F8),
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Background decorative elements
+            Positioned(
+              left: -30,
+              top: 70,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade900.withOpacity(0.7),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              right: -20,
+              top: 150,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  // App Bar
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Builder(
+                          builder: (context) =>  GestureDetector(
+                          onTap: () {
+                            _scaffoldKey.currentState?.openDrawer();
+                          },
+                          child: const Icon(
+                            Icons.menu,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        
+                        ),
+                        const Text(
+                          "Assigned Ticket",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        // Placeholder to keep the title centered
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.menu,
+                            color: Colors.transparent,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Main Content
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          // Search Bar
+                          _buildSearchBar(context),
+                          const SizedBox(height: 16),
+                          // Tickets List
+                          Expanded(
+                            child: ticketlist(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      offset: Offset(0, 1),
+                      blurRadius: 2.0,
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search tickets...',
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    controller.searchTickets(value);
+                  },
+                ),
+              ),
+            ),
+            SizedBox(width: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF4A6FE5).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Obx(() => Text(
+                "${controller.filtredTicketTech.length} tickets",
+                style: TextStyle(
+                  color: Color(0xFF4A6FE5),
+                  fontWeight: FontWeight.w500,
+                ),
+              )),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Status filters
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildStatusChip(context, "Assigned", Colors.blueGrey),
+            _buildStatusChip(context, "In Progress", Colors.orange),
+            _buildStatusChip(context, "Resolved", Colors.green),
+            _buildStatusChip(context, "Closed", Colors.black),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusChip(BuildContext context, String status, Color color) {
+    return Obx(() {
+      final isSelected = controller.currentFilter.value == status || 
+                        (controller.currentFilter.value.isEmpty);
+      
+      return GestureDetector(
+        onTap: () {
+          controller.filterTicketTechByStatus(status);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              color: isSelected ? color : Colors.grey.shade700,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+ Widget ticketlist() {
+  return Obx(() {
+    if (controller.isLoading.value && controller.filtredTicketTech.isEmpty) {
+        return Container(); // Ne rien afficher pendant le chargement initial
+      } else if (controller.errorMessage.value.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            SizedBox(height: 16),
+            Text(
+              controller.errorMessage.value,
+              style: TextStyle(color: Colors.grey.shade700),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => controller.loadTicketsByTechnician(),
+              icon: Icon(Icons.refresh),
+              label: Text("Retry"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4A6FE5),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final assignedTickets = controller.filtredTicketTech
+        .where((ticket) => ticket.status == 'Assigned' || ticket.status == 'Resolved' || ticket.status == 'In Progress' || ticket.status == 'Closed' )
+        .toList();
+
+    if (assignedTickets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+            SizedBox(height: 16),
+            Text(
+              "Aucun ticket assigné",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await controller.loadTicketsByTechnician();
+      },
+      color: Color(0xFF4A6FE5),
+      child: Scrollbar(
+        controller: _scrollController,
+        thickness: 6,
+        radius: Radius.circular(10),
+        thumbVisibility: true,
+        interactive: true,
+        child: AnimationLimiter(
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.only(top: 8, bottom: 16),
+            itemCount: assignedTickets.length,
+            itemBuilder: (context, index) {
+              final ticket = assignedTickets[index];
+              return AnimationConfiguration.staggeredList(
+                position: index,
+                duration: const Duration(milliseconds: 375),
+                child: SlideAnimation(
+                  verticalOffset: 50.0,
+                  child: FadeInAnimation(
+                    child: _buildTicketCard(context, ticket),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  });
+}
+
+  void _showTicketDetailsDialog(BuildContext context, Ticket ticket) {
+    showDialog(
+      context: context,
+      builder: (context) => Ticketdetails(ticket: ticket),
+      barrierDismissible: false,
+    );
+  }
+
+  Widget _buildTicketCard(BuildContext context, Ticket ticket) {
+    final statusColor = controller.getStatusColor(ticket.status);
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => _showTicketDetailsDialog(context, ticket),
+        borderRadius: BorderRadius.circular(16),
+        child: Card(
+          elevation: 2,
+          shadowColor: Colors.black.withOpacity(0.08),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: statusColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _getStatusIcon(ticket.status),
+                            size: 18,
+                            color: statusColor,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "N° ${ticket.number}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_month,
+                                  size: 12,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  "${ticket.creationDate.day}-${ticket.creationDate.month}-${ticket.creationDate.year}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        ticket.status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 12),
+                //title
+                RichText(
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  text: TextSpan(
+    children: [
+      TextSpan(
+        text: 'Title: ',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+      ),
+      TextSpan(
+        text: '${ticket.title}',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+      ),
+    ],
+  ),
+),
+                SizedBox(height: 12),
+                // Description
+                RichText(
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  text: TextSpan(
+    children: [
+      TextSpan(
+        text: 'description: ',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+      ),
+      TextSpan(
+        text: '${ticket.description}',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+      ),
+    ],
+  ),
+),
+               
+
+                // Actions
+                if (ticket.status != "Closed") ...[
+                  SizedBox(height: 12),
+                  Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+                  _buildActionButtons(context, ticket),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'In Progress':
+        return Icons.timelapse;
+      case 'Resolved':
+        return Icons.check_circle_outline;
+      case 'Closed':
+        return Icons.done_all;
+      case 'Deleted':
+        return Icons.delete_outline;
+      case 'Assigned':
+        return Icons.person_outline;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Widget _buildActionButtons(BuildContext context, Ticket ticket) {
+    return Container(
+      padding: EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // Take button
+          ticket.status == "Assigned"
+              ? _buildActionButton(
+                  icon: Icons.touch_app,
+                  label: "Take",
+                  iconColor: Color(0xFFF59E0B),
+                  size: 20,
+                  onPressed: () async {
+                    String? idTech = await session.readId();
+                    if (ticket.status != 'In Progress') {
+                       controller.mangeTicket(ticket.id, idTech!);
+                      Get.snackbar("Succès", "Ticket pris en charge !");
+                    } else {
+                      Get.snackbar(
+                          "Échec", "Ce ticket est déjà en cours de traitement !");
+                    }
+                  },
+                )
+              : SizedBox.shrink(),
+
+          // Chat button
+          ticket.status == "In Progress" || ticket.status == "Resolved"
+              ? _buildActionButton(
+                  icon: Icons.chat,
+                  label: "Chat",
+                  iconColor: Color(0xFF4A6FE5),
+                  size: 20,
+                  onPressed: () {
+                    Get.toNamed('/chat', arguments: ticket.id);
+                  },
+                )
+              : SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    required Color iconColor,
+    required int size,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: iconColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
