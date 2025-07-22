@@ -1,4 +1,4 @@
-const String ip = "192.168.149.190";
+const String ip = "";
 const int port = 3000;
 const serverUrl = 'http://$ip:$port';
 
